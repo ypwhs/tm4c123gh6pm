@@ -2,22 +2,24 @@
 #define CS PD_1
 #define CLK PD_2
 
-#define VRX PE_1
-#define VRY PE_2
-#define SW PE_3
-
 #define LED1 RED_LED
 #define LED2 GREEN_LED
 #define LED3 BLUE_LED
 #define SW1 PUSH2
 #define SW2 PUSH1
 
+#define PART_TM4C123GH6PM
+#define TARGET_IS_BLIZZARD_RA1
+
 #include <stdint.h>
 #include "inc/tm4c123gh6pm.h"
+#include "inc/hw_memmap.h"
+#include "driverlib/rom_map.h"
 #include "driverlib/sysctl.h"
+#include "driverlib/rom.h"
 
 
-char num[12][12] = {
+char num[13][12] = {
 {0x70,0x88,0x88,0x88,0x88,0x88,0x88,0x70},/*"0",0*/
 {0x20,0x60,0xA0,0x20,0x20,0x20,0x20,0xF8},/*"1",1*/
 {0x70,0x88,0x88,0x10,0x20,0x40,0x80,0xF8},/*"2",2*/
@@ -30,10 +32,11 @@ char num[12][12] = {
 {0x70,0x88,0x88,0x88,0x78,0x08,0x88,0x70},/*"9",9*/
 {0x10,0xFE,0x9A,0x92,0xFE,0x92,0x10,0x10},//中
 {0x10,0xFF,0x44,0x4C,0x28,0x30,0x3C,0xC7},//文
+{0},
 };
 
 void setup() {
-  //SysCtlClockSet(SYSCTL_SYSDIV_64 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
+//  SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
   //2.5分频，使用PLL，外部晶振16M，system时钟源选择 main osc。
   //系统时钟200MHZ/2.5=80MHZ
   pinMode(DIN, OUTPUT); 
@@ -45,16 +48,13 @@ void setup() {
   pinMode(SW1, INPUT_PULLUP); 
   pinMode(SW2, INPUT_PULLUP);
   
-  pinMode(VRX, INPUT);
-  pinMode(VRY, INPUT);
-  pinMode(SW, INPUT);
-  
   pinMode(PD_3, OUTPUT);
   digitalWrite(PD_3, HIGH);
   pinMode(PF_1, OUTPUT);
   digitalWrite(PB_5, LOW);
   
   Serial.begin(9600);
+  
   init_max7219();
 }
 
@@ -84,45 +84,15 @@ int pianx = 0;
 int piany = 0;
 int ld = 0;
 long last,now;
-void loop() {
 
-  int vx = analogRead(VRX);
-  int vy = analogRead(VRY);
-  int sw = analogRead(SW);
-  
-  if(vx<1000|vx>3000){
-    if(button){
-      lightPin = LED2;
-      if(vx<1000)pianx--;
-      else pianx++;
-    }
-    button=0;
-  }
-  
-  if(vy<1000|vy>3000){
-    if(button){
-      lightPin = LED3;
-      if(vy<1000)piany++;
-      else piany--;
-    }
-    button=0;
-  }
-  
-  if(sw<500){
-    if(button){
-      lightPin = LED2;
-      pianx=0;
-      piany=0;
-    }
-    button=0;
-  }
+void loop() {
   
   if(!digitalRead(SW1)){
     if(button){
       lightPin = LED2;
       ld++;
       w_max7219(0x0a,ld);
-      if(disp>=12)disp=0;
+      if(disp>=16)disp=0;
     }
     button=0;
   }
@@ -146,27 +116,28 @@ void loop() {
     lightPin = 0;
   }
 
-  if(digitalRead(SW1) && digitalRead(SW2) && 
-    (vx>1000&&vx<3000)&&(vy>1000&&vy<3000)&&(sw>500))button=1;
+  if(digitalRead(SW1) && digitalRead(SW2))button=1;
   now = millis();
-  if(now-last>1000/8){
+  if(now-last>1000/16){
     pianx++;
-    if(pianx>7){
+    if(pianx>8){
       disp++;pianx=0;
     }
+    
     if(disp>12){
       disp=0;
     }
-    if(disp==12)disp2=0;
+    if(disp>11)disp2=0;
     else disp2=disp+1;
     
     int i;
     for(i=0;i<8;i++)
-    w_max7219(i+1, (num[disp][i]<<pianx) + (num[disp2][i]>>(8-pianx)));
+    w_max7219(i+1, (num[disp][i]<<pianx) + (num[disp2][i]>>(9-pianx)));
     last=now;
+    
     Serial.print(disp);
+    Serial.print("\t");
     Serial.print(disp2);
-    Serial.print(pianx);
     Serial.println();
   }
 }
