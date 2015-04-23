@@ -20,13 +20,17 @@ int p = BLUE_LED;
 
 long i = 0;
 int ci = 0;
+long last = 0;
 void lala(){
   ci ++;
   if(ci>=25){
   Serial.print(i);
   Serial.print("\t");
+  Serial.print(i-last);
+  Serial.print("\t");
   Serial.println(millis());
   ci=0;
+  last = i;
   }
 }
 
